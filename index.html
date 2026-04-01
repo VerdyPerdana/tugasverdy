@@ -3,68 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Priority Task - Google Sheets Sync</title>
+    <title>Priority Task - Modern Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        .quadrant { min-height: 200px; }
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.7); z-index: 999; justify-content: center; items-center: center; }
+        .quadrant { min-height: 180px; transition: all 0.3s ease; }
+        .task-card { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        /* Loader kecil di pojok agar tidak mengganggu */
+        #sync-indicator { display: none; position: fixed; bottom: 20px; right: 20px; background: white; padding: 10px 20px; border-radius: 50px; shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 1000; border: 1px solid #e2e8f0; }
     </style>
 </head>
-<body class="bg-gray-50 font-sans text-gray-800">
+<body class="bg-slate-50 font-sans text-slate-800">
 
-    <div id="loader" class="loading-overlay flex flex-col">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-700 mb-2"></div>
-        <p class="font-bold text-indigo-700">Menyinkronkan ke Spreadsheet...</p>
+    <div id="sync-indicator" class="flex items-center gap-2 shadow-lg">
+        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+        <span class="text-sm font-medium text-slate-600">Menyimpan ke Sheets...</span>
     </div>
 
-    <div class="max-w-6xl mx-auto p-6">
-        <header class="mb-8 text-center">
-            <h1 class="text-4xl font-bold text-indigo-700">My Priority Manager</h1>
-            <p class="text-gray-500 mt-2">Sinkronisasi Otomatis dengan Google Sheets</p>
+    <div class="max-w-6xl mx-auto p-4 md:p-8">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-extrabold text-indigo-700 tracking-tight">My Priority Manager</h1>
+            <p class="text-slate-500 mt-2 font-medium">Atur tugas dengan Kuadran Eisenhower & Google Sheets</p>
         </header>
 
-        <div class="bg-white p-6 rounded-2xl shadow-sm mb-10 border border-gray-100">
+        <div class="bg-white p-5 rounded-3xl shadow-sm mb-8 border border-slate-200">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input type="text" id="taskInput" placeholder="Nama tugas..." class="p-3 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-400">
-                <input type="date" id="dateInput" class="p-3 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-400">
-                <select id="priorityInput" class="p-3 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-400">
-                    <option value="1">Mendesak & Penting</option>
-                    <option value="2">Penting (Jadwalkan)</option>
-                    <option value="3">Mendesak (Delegasi)</option>
-                    <option value="4">Kurang Penting</option>
-                </select>
-                <button onclick="addTask()" class="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition font-bold">
-                    <i class="fas fa-plus mr-2"></i>Tambah
-                </button>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400 ml-2">NAMA TUGAS</label>
+                    <input type="text" id="taskInput" placeholder="Contoh: Revisi Bab 3" class="p-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white transition-all">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400 ml-2">DEADLINE</label>
+                    <input type="date" id="dateInput" class="p-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white transition-all">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-bold text-slate-400 ml-2">PRIORITAS</label>
+                    <select id="priorityInput" class="p-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white transition-all">
+                        <option value="1">🔥 Q1: Penting & Mendesak</option>
+                        <option value="2">📅 Q2: Penting (Jadwalkan)</option>
+                        <option value="3">⚡ Q3: Mendesak (Delegasi)</option>
+                        <option value="4">☁️ Q4: Kurang Penting</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="addTask()" class="w-full bg-indigo-600 text-white p-3.5 rounded-2xl hover:bg-indigo-700 transition-all font-bold shadow-md shadow-indigo-200 active:scale-95">
+                        <i class="fas fa-plus mr-2"></i>Tambah Tugas
+                    </button>
+                </div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            <div class="bg-red-50 p-4 rounded-2xl border-l-8 border-red-500"><h2 class="font-bold text-red-700 mb-4 italic">Q1: KERJAKAN SEKARANG</h2><div id="q-1" class="quadrant space-y-3"></div></div>
-            <div class="bg-blue-50 p-4 rounded-2xl border-l-8 border-blue-500"><h2 class="font-bold text-blue-700 mb-4 italic">Q2: JADWALKAN</h2><div id="q-2" class="quadrant space-y-3"></div></div>
-            <div class="bg-yellow-50 p-4 rounded-2xl border-l-8 border-yellow-500"><h2 class="font-bold text-yellow-700 mb-4 italic">Q3: DELEGASIKAN</h2><div id="q-3" class="quadrant space-y-3"></div></div>
-            <div class="bg-gray-100 p-4 rounded-2xl border-l-8 border-gray-400"><h2 class="font-bold text-gray-600 mb-4 italic">Q4: ELIMINASI</h2><div id="q-4" class="quadrant space-y-3"></div></div>
+            <div class="bg-red-50/50 p-5 rounded-3xl border border-red-100 shadow-sm">
+                <h2 class="font-bold text-red-600 mb-4 flex items-center gap-2"><span class="bg-red-600 text-white px-2 py-0.5 rounded text-xs">Q1</span> KERJAKAN SEKARANG</h2>
+                <div id="q-1" class="quadrant space-y-3"></div>
+            </div>
+            <div class="bg-blue-50/50 p-5 rounded-3xl border border-blue-100 shadow-sm">
+                <h2 class="font-bold text-blue-600 mb-4 flex items-center gap-2"><span class="bg-blue-600 text-white px-2 py-0.5 rounded text-xs">Q2</span> JADWALKAN</h2>
+                <div id="q-2" class="quadrant space-y-3"></div>
+            </div>
+            <div class="bg-amber-50/50 p-5 rounded-3xl border border-amber-100 shadow-sm">
+                <h2 class="font-bold text-amber-600 mb-4 flex items-center gap-2"><span class="bg-amber-600 text-white px-2 py-0.5 rounded text-xs">Q3</span> DELEGASIKAN</h2>
+                <div id="q-3" class="quadrant space-y-3"></div>
+            </div>
+            <div class="bg-slate-100/50 p-5 rounded-3xl border border-slate-200 shadow-sm">
+                <h2 class="font-bold text-slate-500 mb-4 flex items-center gap-2"><span class="bg-slate-500 text-white px-2 py-0.5 rounded text-xs">Q4</span> ELIMINASI</h2>
+                <div id="q-4" class="quadrant space-y-3"></div>
+            </div>
         </div>
 
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h2 class="font-bold text-gray-700 mb-4 flex items-center"><i class="fas fa-history mr-2 text-green-500"></i> Riwayat Selesai</h2>
-            <div id="history" class="space-y-2"></div>
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <h2 class="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                <i class="fas fa-check-circle text-green-500"></i> Riwayat Tugas Selesai
+            </h2>
+            <div id="history" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
         </div>
     </div>
 
     <script>
-        // GANTI LINK DI BAWAH INI DENGAN LINK YANG KAMU SALIN
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPQLKoav5xpffecS0t2GP9WLni7wQBzN02hfz_0Y8y0wOI9uz0w1lznO4MG3RqVZjZ/exec";
-
+        
         let tasks = JSON.parse(localStorage.getItem('myTasks')) || [];
 
+        function showLoading(show) {
+            document.getElementById('sync-indicator').style.display = show ? 'flex' : 'none';
+        }
+
         async function syncWithSheets(data) {
-            document.getElementById('loader').style.display = 'flex';
+            showLoading(true);
             try {
+                // Menggunakan mode no-cors agar tidak stuck di browser
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // Penting untuk Google Apps Script
+                    mode: 'no-cors',
                     cache: 'no-cache',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
@@ -72,32 +104,35 @@
             } catch (e) {
                 console.error("Gagal sinkron:", e);
             }
-            // document.getElementById('loader').style.display = 'none';
+            // Sembunyikan loading setelah 1 detik agar terasa prosesnya
+            setTimeout(() => showLoading(false), 1000);
         }
 
         function addTask() {
-            const name = document.getElementById('taskInput').value;
-            const date = document.getElementById('dateInput').value;
-            const priority = document.getElementById('priorityInput').value;
+            const nameEl = document.getElementById('taskInput');
+            const dateEl = document.getElementById('dateInput');
+            const priorityEl = document.getElementById('priorityInput');
 
-            if (!name || !date) return alert("Isi data dengan lengkap!");
+            if (!nameEl.value || !dateEl.value) return alert("Ups! Isi nama tugas dan deadline dulu ya.");
 
             const newTask = {
                 action: 'add',
                 id: Date.now(),
-                name: name,
-                date: date,
-                priority: priority
+                name: nameEl.value,
+                date: dateEl.value,
+                priority: priorityEl.value,
+                completed: false
             };
 
-            // Simpan ke lokal dulu (supaya cepat)
-            tasks.push({...newTask, completed: false});
+            tasks.push(newTask);
             localStorage.setItem('myTasks', JSON.stringify(tasks));
             
-            // Kirim ke Google Sheets
+            // Sync ke Google Sheets
             syncWithSheets(newTask);
             
-            document.getElementById('taskInput').value = '';
+            // Reset Form & Render
+            nameEl.value = '';
+            dateEl.value = '';
             renderTasks();
         }
 
@@ -113,28 +148,50 @@
             renderTasks();
         }
 
+        function deleteTask(id) {
+            if(confirm("Hapus tugas ini?")) {
+                tasks = tasks.filter(t => t.id !== id);
+                localStorage.setItem('myTasks', JSON.stringify(tasks));
+                renderTasks();
+            }
+        }
+
         function renderTasks() {
+            // Clear all containers
             [1, 2, 3, 4].forEach(i => document.getElementById(`q-${i}`).innerHTML = '');
             document.getElementById('history').innerHTML = '';
 
             tasks.forEach(task => {
-                const html = `
-                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
-                        <div>
-                            <p class="font-semibold ${task.completed ? 'line-through text-gray-400' : ''}">${task.name}</p>
-                            <p class="text-xs text-gray-400">Deadline: ${task.date}</p>
+                const card = `
+                    <div class="task-card bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group">
+                        <div class="flex-1">
+                            <p class="font-bold ${task.completed ? 'line-through text-slate-400' : 'text-slate-700'}">${task.name}</p>
+                            <div class="flex items-center gap-3 mt-1">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                    <i class="far fa-calendar"></i> ${task.date}
+                                </span>
+                                ${task.completedDate ? `<span class="text-[10px] font-bold text-green-500 uppercase tracking-widest italic">Selesai: ${task.completedDate}</span>` : ''}
+                            </div>
                         </div>
-                        <button onclick="toggleTask(${task.id})" class="text-green-500 p-2"><i class="fas fa-check"></i></button>
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="toggleTask(${task.id})" class="p-2 ${task.completed ? 'text-amber-500' : 'text-green-500'} hover:bg-slate-50 rounded-xl">
+                                <i class="fas ${task.completed ? 'fa-undo' : 'fa-check'}"></i>
+                            </button>
+                            <button onclick="deleteTask(${task.id})" class="p-2 text-red-400 hover:bg-red-50 rounded-xl">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
                     </div>`;
                 
                 if (task.completed) {
-                    document.getElementById('history').innerHTML += html;
+                    document.getElementById('history').innerHTML += card;
                 } else {
-                    document.getElementById(`q-${task.priority}`).innerHTML += html;
+                    document.getElementById(`q-${task.priority}`).innerHTML += card;
                 }
             });
         }
 
+        // Initial Render
         renderTasks();
     </script>
 </body>
